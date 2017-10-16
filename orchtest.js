@@ -18,7 +18,7 @@ app.post('/Jobs' ,function (req, res, next) {
         username: "username",
         password: "password",
         workstation: '',
-        domain: 'Thiral.com',
+        domain: 'something.com',
         json: obj
             }, function (err, ntlmRes) {
      
