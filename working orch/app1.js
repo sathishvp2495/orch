@@ -3,6 +3,7 @@ var builder=require('botbuilder');
 var http = require('http');
 var cron = require('cron');
 
+
 var server=restify.createServer();
 
 server.listen(1212,function() {
@@ -14,75 +15,139 @@ var connector=new builder.ChatConnector({
     appPassword:''
 });
 
+
+var restapi = ['filetextedit','editor','restcall']
+
+
+
+
 var bot=new builder.UniversalBot(connector);
 server.post('/',connector.listen());
-bot.dialog('/', [
-    function (session) {
-        session.send("main menu : ")
-        session.beginDialog('/Menu', session.userData);
+
+
+bot.dialog('/',[
+    function(session) {
+        session.beginDialog('/Menu');
+
     }
+
 ]);
 
 
-
-bot.dialog('/Menu', [
+    bot.dialog('/Menu', [
     function(session) {
-        builder.Prompts.choice(session,"Do you want to start a Runbook : " , "YES|NO" , {listStyle: builder.ListStyle.button});       
+        builder.Prompts.choice(session,"your runbooks are: " , "filetextedit | editor | restcall " , {listStyle: builder.ListStyle.button});
 },
-function (session, results) {
+   function (session, results) {
         switch (results.response.index) {
             case 0:
-                session.beginDialog('/YES');
+                session.beginDialog('filetextedit');
                 break;
             case 1:
-                session.beginDialog('/NO');
-
+                session.beginDialog('editor');
                 break;
-                default:
+            case 2:
+                session.beginDialog('restcall');
+                break;        
+
+            default:
                 session.endDialog("end");
                 break;
-                        }
+        }
     }
+    ])
 
+    var str;
+    restapi.forEach(function(value){
 
-]);
+bot.dialog(value, [
+        function(session) {
 
+            var i;
+            for (i=0;i<=(restapi.length-1);i++) {
+            if(value == restapi[i])
+            {
+            str = restapi[i]
+            }
+        }
+        builder.Prompts.text(session,"Do you want to start a Runbook now or later");       
+    },
+    
+        function (session, results) {
+        session.userData.time = results.response;
 
-bot.dialog('/YES', [
-    function (session, results) {
-    	var cronJob = cron.job("0 */2 * * * *", function(){
-var options = {
+        if(session.userData.time=='now'){
+           session.beginDialog('/now');
+        }
+        else if(session.userData.time=='later'){
+        session.beginDialog('/later');
+        };
+        }
+    ])
+});
+
+bot.dialog('/later', [
+        function(session) {
+         builder.Prompts.number(session,"Enter a minutes in numeric");       
+    },
+        function (session, results) {
+        session.userData.minutes = results.response;
+        builder.Prompts.number(session, "Enter a hour in numeric"); 
+    },
+        function (session, results) {
+        session.userData.hour = results.response;
+        var cronJob = cron.job("00 "+session.userData.minutes+" "+session.userData.hour+" * * *", function(){
+        
+        var options = {
         host: 'localhost',
         port: 1100,
-        path: '/Jobs',
+        path: '/'+str,
         method: 'POST'
-    };
-    // var http = require('http');    
+    };    
+    
     http.request(options, function (res) {
         var jsondata = '';
         res.on('data', function (data) {
             jsondata += data;
         });
         res.on('end', function () {
-            // response.json(JSON.parse(jsondata));
-            session.send('runbook started');
+
+            session.send(str +' runbook started');
+            session.endConversation("Thank you!");
+            // session.reset();
+            session.clearDialogStack()
+
         });
     }).end();
-        // session.userData.name = results.response.entity;
-        // session.send('runbook started');
-        // getBooksData();
-        // session.endConversation("Thank you!");
-        }); 
+        });
         cronJob.start();
+        if(session.userData.minutes!=null){
+            session.beginDialog('/Menu');
+        }
     }
-
 ]);
 
-bot.dialog('/NO', [
 
+bot.dialog('/now', [
     function (session, results) {
-        // session.userData.name = results.response.entity;
-        session.send('you select no');
-        session.endConversation("if u want a help please call me!");
+var options = {
+        host: 'localhost',
+        port: 1100,
+        path: '/'+str,
+        method: 'POST'
+    };    
+    http.request(options, function (res) {
+        var jsondata = '';
+        res.on('data', function (data) {
+            jsondata += data;
+        });
+        res.on('end', function () {
+            session.send(str +' runbook started');
+            session.endConversation("Thank you!");
+            // session.reset();
+            session.clearDialogStack()
+
+        });
+    }).end();
     }
 ]);
